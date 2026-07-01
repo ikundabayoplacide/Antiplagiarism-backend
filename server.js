@@ -1,4 +1,6 @@
 const express = require('express');
+const swaggerUi = require('swagger-ui-express');
+const swaggerSpec = require('./swagger/swaggerConfig');
 const { port, nodeEnv } = require('./config/config');
 const { connectDB, sequelize } = require('./config/database');
 require('./src/database/modals/index'); // register models & associations
@@ -22,6 +24,9 @@ app.use('/api/lecturer', lecturerRoutes);
 app.use('/api/admin', adminRoutes);
 app.use('/api/settings', settingsRoutes);
 
+// Swagger docs
+app.use('/api/docs', swaggerUi.serve, swaggerUi.setup(swaggerSpec));
+
 // Health check
 app.get('/', (req, res) => res.json({ message: 'Anti-Plagiarism API is running' }));
 
@@ -42,6 +47,7 @@ const startServer = async () => {
     app.listen(port, () => {
       console.log(`Server running in ${nodeEnv} mode on port ${port}`);
       console.log(`Health check: http://localhost:${port}/`);
+      console.log(`Swagger Docs: http://localhost:${port}/api/docs`);
     });
   } catch (error) {
     console.error('Failed to start server:', error.message);
