@@ -10,6 +10,7 @@ const studentRoutes = require('./routes/student');
 const lecturerRoutes = require('./routes/lecturer');
 const adminRoutes = require('./routes/admin');
 const settingsRoutes = require('./routes/settings');
+const documentRoutes = require('./routes/document');
 
 const app = express();
 
@@ -23,6 +24,7 @@ app.use('/api/student', studentRoutes);
 app.use('/api/lecturer', lecturerRoutes);
 app.use('/api/admin', adminRoutes);
 app.use('/api/settings', settingsRoutes);
+app.use('/api/documents', documentRoutes);
 
 // Swagger docs
 app.use('/api/docs', swaggerUi.serve, swaggerUi.setup(swaggerSpec));
@@ -42,7 +44,7 @@ app.use((err, req, res, next) => {
 const startServer = async () => {
   try {
     await connectDB();
-    await sequelize.sync({ alter: true });
+    await sequelize.sync({ alter: nodeEnv === 'development' });
     console.log('Database synced successfully');
     app.listen(port, () => {
       console.log(`Server running in ${nodeEnv} mode on port ${port}`);

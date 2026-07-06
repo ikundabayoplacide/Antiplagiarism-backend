@@ -16,15 +16,10 @@ Settings.init(
       unique: true,
       field: 'user_id',
     },
-    firstName: {
+    fullName: {
       type: DataTypes.STRING(255),
       allowNull: true,
-      field: 'first_name',
-    },
-    lastName: {
-      type: DataTypes.STRING(255),
-      allowNull: true,
-      field: 'last_name',
+      field: 'full_name',
     },
     email: {
       type: DataTypes.STRING(255),

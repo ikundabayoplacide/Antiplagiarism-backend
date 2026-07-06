@@ -106,6 +106,27 @@ const options = {
           type: 'object',
           properties: { message: { type: 'string' } },
         },
+        Document: {
+          type: 'object',
+          properties: {
+            id:        { type: 'string' },
+            userId:    { type: 'string' },
+            fileType:  { type: 'string' },
+            fileSize:  { type: 'integer' },
+            createdAt: { type: 'string', format: 'date-time' },
+          },
+        },
+        DocumentWithContent: {
+          type: 'object',
+          properties: {
+            id:        { type: 'string' },
+            userId:    { type: 'string' },
+            fileType:  { type: 'string' },
+            fileSize:  { type: 'integer' },
+            content:   { type: 'string', description: 'Base64 encoded file content' },
+            createdAt: { type: 'string', format: 'date-time' },
+          },
+        },
       },
     },
     security: [{ bearerAuth: [] }],

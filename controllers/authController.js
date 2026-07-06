@@ -5,7 +5,7 @@ const { User, Settings } = require('../src/database/modals/index');
 
 const generateToken = (user) =>
   jwt.sign(
-    { id: user.id, email: user.email, role: user.role, phoneNumber: user.phoneNumber || null },
+    { id: user.id, fullName: user.fullName, email: user.email, role: user.role, phoneNumber: user.phoneNumber || null },
     jwtSecret,
     { expiresIn: jwtExpiresIn }
   );
@@ -13,8 +13,10 @@ const generateToken = (user) =>
 const register = async (req, res) => {
   try {
     const { fullName, email, password, role, phoneNumber } = req.body;
-    if (!fullName || !email || !password || !role)
-      return res.status(400).json({ message: 'All fields are required' });
+    if (!fullName) return res.status(400).json({ field: 'fullName', message: 'Full name is required' });
+    if (!email) return res.status(400).json({ field: 'email', message: 'Email is required' });
+    if (!password) return res.status(400).json({ field: 'password', message: 'Password is required' });
+    if (!role) return res.status(400).json({ field: 'role', message: 'Role is required' });
 
     const validRoles = ['student', 'lecturer', 'admin'];
     if (!validRoles.includes(role))
@@ -22,16 +24,14 @@ const register = async (req, res) => {
 
     const existing = await User.findOne({ where: { email } });
     if (existing)
-      return res.status(409).json({ message: 'Email already registered' });
+      return res.status(409).json({ field: 'email', message: 'Email already registered' });
 
     const hashed = await bcrypt.hash(password, 10);
     const user = await User.create({ fullName, email, password: hashed, role, phoneNumber: phoneNumber || null });
 
-    const nameParts = fullName.split(' ');
     await Settings.create({
       userId: user.id,
-      firstName: nameParts[0] || '',
-      lastName: nameParts.slice(1).join(' ') || '',
+      fullName,
       email,
     });
 
@@ -48,16 +48,16 @@ const register = async (req, res) => {
 const login = async (req, res) => {
   try {
     const { email, password } = req.body;
-    if (!email || !password)
-      return res.status(400).json({ message: 'Email and password are required' });
+    if (!email) return res.status(400).json({ field: 'email', message: 'Email is required' });
+    if (!password) return res.status(400).json({ field: 'password', message: 'Password is required' });
 
     const user = await User.findOne({ where: { email } });
     if (!user)
-      return res.status(401).json({ message: 'Invalid credentials' });
+      return res.status(404).json({ field: 'email', message: 'No account found with this email' });
 
     const match = await bcrypt.compare(password, user.password);
     if (!match)
-      return res.status(401).json({ message: 'Invalid credentials' });
+      return res.status(401).json({ field: 'password', message: 'Incorrect password' });
 
     const token = generateToken(user);
     res.json({
