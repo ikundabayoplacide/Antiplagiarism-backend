@@ -33,6 +33,10 @@ User.init(
       allowNull: true,
       field: 'phone_number',
     },
+    department: {
+      type: DataTypes.STRING(255),
+      allowNull: true,
+    },
     createdAt: {
       type: DataTypes.DATE,
       defaultValue: DataTypes.NOW,

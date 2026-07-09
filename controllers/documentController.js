@@ -1,4 +1,4 @@
-const { Document } = require('../src/database/modals/index');
+const { Document, User } = require('../src/database/modals/index');
 
 const uploadDocument = async (req, res) => {
   try {
@@ -31,9 +31,12 @@ const uploadDocument = async (req, res) => {
 
 const getDocuments = async (req, res) => {
   try {
+    const isPrivileged = ['lecturer', 'admin'].includes(req.user.role);
+    const where = isPrivileged ? {} : { userId: req.user.id };
     const documents = await Document.findAll({
-      where: { userId: req.user.id },
-      attributes: ['id', 'fileName', 'fileSize', 'createdAt'],
+      where,
+      attributes: ['id', 'fileName', 'fileSize', 'createdAt', 'userId'],
+      include: [{ model: User, as: 'user', attributes: ['fullName'] }],
       order: [['created_at', 'DESC']],
     });
     res.json(documents);
@@ -44,7 +47,9 @@ const getDocuments = async (req, res) => {
 
 const getDocumentById = async (req, res) => {
   try {
-    const document = await Document.findOne({ where: { id: req.params.id, userId: req.user.id } });
+    const isPrivileged = ['lecturer', 'admin'].includes(req.user.role);
+    const where = isPrivileged ? { id: req.params.id } : { id: req.params.id, userId: req.user.id };
+    const document = await Document.findOne({ where });
     if (!document) return res.status(404).json({ message: 'Document not found' });
     res.json(document);
   } catch (err) {

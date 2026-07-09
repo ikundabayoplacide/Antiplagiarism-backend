@@ -1,6 +1,6 @@
-const { Op, fn, col, literal } = require('sequelize');
+const { Op } = require('sequelize');
 const { sequelize } = require('../config/database');
-const { User, Scan } = require('../src/database/modals/index');
+const { User, Scan, LecturerStudent, Document } = require('../src/database/modals/index');
 
 const getStats = async (req, res) => {
   try {
@@ -21,19 +21,20 @@ const getStats = async (req, res) => {
 
 const getStudents = async (req, res) => {
   try {
-    const students = await User.findAll({
-      where: { role: 'student' },
-      attributes: [
-        'id', 'fullName', 'email', 'phoneNumber',
-        [fn('COUNT', col('scans.id')), 'submissionsCount'],
-        ['created_at', 'joinedDate'],
-      ],
-      include: [{ model: Scan, as: 'scans', attributes: [] }],
-      group: ['User.id'],
-      order: [['created_at', 'DESC']],
+    const assignments = await LecturerStudent.findAll({
+      where: { lecturerId: req.user.id },
+      include: [{
+        model: User,
+        as: 'student',
+        attributes: ['id', 'fullName', 'email', 'phoneNumber', 'department', 'createdAt'],
+        include: [{ model: Scan, as: 'scans', attributes: [] }],
+      }],
     });
 
-    res.json(students.map((s) => ({ ...s.toJSON(), department: 'Computer Science' })));
+    res.json(assignments.map((a) => ({
+      ...a.student.toJSON(),
+      submissionsCount: a.student.scans?.length ?? 0,
+    })));
   } catch (err) {
     res.status(500).json({ message: err.message });
   }
@@ -171,8 +172,54 @@ const getNotifications = async (req, res) => {
   }
 };
 
+const getMyStudentsProjects = async (req, res) => {
+  try {
+    const assignments = await LecturerStudent.findAll({
+      where: { lecturerId: req.user.id },
+      attributes: ['studentId'],
+    });
+
+    const studentIds = assignments.map((a) => a.studentId);
+    if (studentIds.length === 0) return res.json([]);
+
+    const documents = await Document.findAll({
+      where: { userId: studentIds },
+      attributes: ['id', 'fileName', 'fileSize', 'createdAt', 'userId'],
+      include: [{ model: User, as: 'user', attributes: ['id', 'fullName', 'email'] }],
+      order: [['created_at', 'DESC']],
+    });
+
+    res.json(
+      documents.map((d) => ({
+        id: d.id,
+        title: d.fileName,
+        fileSize: d.fileSize,
+        studentName: d.user.fullName,
+        studentId: d.user.id,
+        studentEmail: d.user.email,
+        dateSubmitted: d.createdAt,
+      }))
+    );
+  } catch (err) {
+    res.status(500).json({ message: err.message });
+  }
+};
+
+const getMyStudents = async (req, res) => {
+  try {
+    const assignments = await LecturerStudent.findAll({
+      where: { lecturerId: req.user.id },
+      include: [{ model: User, as: 'student', attributes: ['id', 'fullName', 'email', 'phoneNumber'] }],
+      order: [['created_at', 'DESC']],
+    });
+    res.json(assignments.map((a) => a.student));
+  } catch (err) {
+    res.status(500).json({ message: err.message });
+  }
+};
+
 module.exports = {
   getStats, getStudents, getProjects, getProjectById,
   getMonthlySubmissions, getPlagiarismDistribution,
-  getSimilarityTrends, getNotifications,
+  getSimilarityTrends, getNotifications, getMyStudents, getMyStudentsProjects,
 };

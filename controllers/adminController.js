@@ -1,7 +1,7 @@
 const bcrypt = require('bcryptjs');
 const { Op } = require('sequelize');
 const { sequelize } = require('../config/database');
-const { User, Scan, Settings } = require('../src/database/modals/index');
+const { User, Scan, Settings, LecturerStudent } = require('../src/database/modals/index');
 
 const getStats = async (req, res) => {
   try {
@@ -190,8 +190,72 @@ const getNotifications = async (req, res) => {
   }
 };
 
+const assignStudent = async (req, res) => {
+  try {
+    const { lecturerId, studentId } = req.body;
+    if (!lecturerId || !studentId)
+      return res.status(400).json({ message: 'lecturerId and studentId are required' });
+
+    const lecturer = await User.findOne({ where: { id: lecturerId, role: 'lecturer' } });
+    if (!lecturer) return res.status(404).json({ message: 'Lecturer not found' });
+
+    const student = await User.findOne({ where: { id: studentId, role: 'student' } });
+    if (!student) return res.status(404).json({ message: 'Student not found' });
+
+    const [assignment, created] = await LecturerStudent.findOrCreate({
+      where: { lecturerId, studentId },
+      defaults: { lecturerId, studentId },
+    });
+
+    if (!created) return res.status(409).json({ message: 'Student already assigned to this lecturer' });
+
+    res.status(201).json({ id: assignment.id, lecturerId, studentId, createdAt: assignment.createdAt });
+  } catch (err) {
+    res.status(500).json({ message: err.message });
+  }
+};
+
+const unassignStudent = async (req, res) => {
+  try {
+    const deleted = await LecturerStudent.destroy({ where: { id: req.params.id } });
+    if (!deleted) return res.status(404).json({ message: 'Assignment not found' });
+    res.json({ message: 'Student unassigned successfully' });
+  } catch (err) {
+    res.status(500).json({ message: err.message });
+  }
+};
+
+const getAssignments = async (req, res) => {
+  try {
+    const assignments = await LecturerStudent.findAll({
+      include: [
+        { model: User, as: 'lecturer', attributes: ['id', 'fullName', 'email'] },
+        { model: User, as: 'student', attributes: ['id', 'fullName', 'email'] },
+      ],
+      order: [['created_at', 'DESC']],
+    });
+    res.json(assignments);
+  } catch (err) {
+    res.status(500).json({ message: err.message });
+  }
+};
+
+const getStudentsByLecturer = async (req, res) => {
+  try {
+    const assignments = await LecturerStudent.findAll({
+      where: { lecturerId: req.params.lecturerId },
+      include: [{ model: User, as: 'student', attributes: ['id', 'fullName', 'email', 'phoneNumber'] }],
+      order: [['created_at', 'DESC']],
+    });
+    res.json(assignments.map((a) => a.student));
+  } catch (err) {
+    res.status(500).json({ message: err.message });
+  }
+};
+
 module.exports = {
   getStats, getDocuments, getSimilarity, getUsers,
   createUser, deleteUser, getDocumentsPerMonth,
   getPlagiarismStats, getUserActivity, getNotifications,
+  assignStudent, unassignStudent, getAssignments, getStudentsByLecturer,
 };
