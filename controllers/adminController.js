@@ -8,12 +8,12 @@ const getStats = async (req, res) => {
     const userCount = await User.count();
     const docCount = await Scan.count();
 
-    res.json([
-      { title: 'Total Users', count: userCount, trend: '+12%', trendUp: true },
-      { title: 'Total Documents', count: docCount, trend: '+8%', trendUp: true },
-      { title: 'Total Checks', count: docCount, trend: '+15%', trendUp: true },
-      { title: 'Total Reports', count: docCount, trend: '+5%', trendUp: true },
-    ]);
+    res.json({
+      totalUsers: userCount,
+      totalDocuments: docCount,
+      totalChecks: docCount,
+      totalReports: docCount,
+    });
   } catch (err) {
     res.status(500).json({ message: err.message });
   }
@@ -22,27 +22,36 @@ const getStats = async (req, res) => {
 const getDocuments = async (req, res) => {
   try {
     const scans = await Scan.findAll({
-      include: [{ model: User, as: 'user', attributes: ['fullName'] }],
+      attributes: ['id', 'fileName', 'fileType', 'fileSize', 'userId', 'createdAt'],
       order: [['created_at', 'DESC']],
     });
+
+    // Fetch user names separately to avoid join issues
+    const userIds = [...new Set(scans.map((s) => s.userId))];
+    const users = userIds.length
+      ? await User.findAll({ where: { id: userIds }, attributes: ['id', 'fullName'] })
+      : [];
+    const userMap = Object.fromEntries(users.map((u) => [u.id, u.fullName]));
 
     res.json(
       scans.map((s) => ({
         id: s.id,
-        title: s.fileName,
-        uploadedBy: s.user.fullName,
-        uploadDate: s.created_at,
-        status: s.plagiarismPercent !== null ? 'completed' : 'pending',
+        fileName: s.fileName,
+        fileType: s.fileType || 'unknown',
+        fileSize: s.fileSize || 0,
+        uploadedBy: userMap[s.userId] ?? null,
+        createdAt: s.createdAt,
       }))
     );
   } catch (err) {
+    console.error('getDocuments error:', err);
     res.status(500).json({ message: err.message });
   }
 };
 
 const getSimilarity = async (req, res) => {
   try {
-    const scans = await Scan.findAll({ order: [['plagiarismPercent', 'DESC']] });
+    const scans = await Scan.findAll({ order: [['plagiarism_percent', 'DESC']] });
 
     res.json(
       scans.map((s) => {
@@ -182,7 +191,7 @@ const getNotifications = async (req, res) => {
         id: s.id,
         title: s.plagiarismPercent >= 30 ? 'Plagiarism Alert' : 'New Submission',
         message: `${s.user.fullName} submitted "${s.fileName}" — ${s.plagiarismPercent}% similarity`,
-        time: s.created_at,
+        time: s.createdAt,
       }))
     );
   } catch (err) {

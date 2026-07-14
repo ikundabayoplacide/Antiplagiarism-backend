@@ -4,7 +4,7 @@ const { pool } = require('../../../config/db');
 
 const runMigrations = async () => {
   const migrationsDir = __dirname;
-  const files = ['001_init.sql', '002_add_phone_number.sql', '003_lecturer_students.sql', '004_add_department.sql'];
+  const files = ['001_init.sql', '002_add_phone_number.sql', '003_lecturer_students.sql', '004_add_department.sql', '005_add_pgvector.sql'];
 
   for (const file of files) {
     const sql = fs.readFileSync(path.join(migrationsDir, file), 'utf8');

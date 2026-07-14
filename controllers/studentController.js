@@ -1,34 +1,7 @@
 const path = require('path');
 const fs = require('fs');
-const pdfParse = require('pdf-parse');
-const mammoth = require('mammoth');
-const { detectPlagiarism } = require('../src/plagiarismEngine');
+const { generateReport } = require('../src/reportGenerator');
 const { Scan } = require('../src/database/modals/index');
-
-const extractText = async (filePath, mimeType, originalName) => {
-  const ext = path.extname(originalName).toLowerCase();
-
-  if (ext === '.pdf') {
-    const buffer = fs.readFileSync(filePath);
-    const data = await pdfParse(buffer);
-    return data.text;
-  }
-
-  if (ext === '.docx') {
-    const result = await mammoth.extractRawText({ path: filePath });
-    return result.value;
-  }
-
-  if (ext === '.doc') {
-    return fs.readFileSync(filePath, 'utf8');
-  }
-
-  if (ext === '.txt') {
-    return fs.readFileSync(filePath, 'utf8');
-  }
-
-  throw new Error('Unsupported file type');
-};
 
 const getStats = async (req, res) => {
   try {
@@ -80,21 +53,24 @@ const createScan = async (req, res) => {
       return res.status(400).json({ message: 'Unsupported file type. Allowed: pdf, doc, docx, txt' });
     }
 
-    const text = await extractText(filePath, mimetype, originalname);
+    const buffer = fs.readFileSync(filePath);
     fs.unlinkSync(filePath);
 
-    const { plagiarismPercent, originalPercent, wordCount, status, matchedSections } = detectPlagiarism(text);
+    const fileType = ext.replace('.', '');
+    const { docEmbedding, wordCount, plagiarismPercent, originalPercent, status, matchedSections } =
+      await generateReport(buffer, fileType);
 
     const scan = await Scan.create({
       userId: req.user.id,
       fileName: originalname,
       fileSize: size,
-      fileType: ext.replace('.', ''),
+      fileType,
       plagiarismPercent,
       originalPercent,
       wordCount,
       status,
       matchedSections,
+      embedding: docEmbedding,
     });
 
     res.status(201).json(scan);

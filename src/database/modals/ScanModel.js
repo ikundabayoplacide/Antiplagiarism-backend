@@ -55,6 +55,20 @@ Scan.init(
       defaultValue: [],
       field: 'matched_sections',
     },
+    embedding: {
+      type: 'vector(384)',
+      allowNull: true,
+      field: 'embedding',
+      get() {
+        const val = this.getDataValue('embedding');
+        if (!val) return null;
+        if (Array.isArray(val)) return val;
+        return val.replace(/[\[\]]/g, '').split(',').map(Number);
+      },
+      set(val) {
+        this.setDataValue('embedding', val ? `[${val.join(',')}]` : null);
+      },
+    },
     createdAt: {
       type: DataTypes.DATE,
       defaultValue: DataTypes.NOW,

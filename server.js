@@ -12,9 +12,12 @@ const adminRoutes = require('./routes/admin');
 const settingsRoutes = require('./routes/settings');
 const documentRoutes = require('./routes/document');
 
+const cors = require('cors');
+
 const app = express();
 
 // Middleware
+app.use(cors({ origin: 'http://localhost:8080', credentials: true }));
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
@@ -41,11 +44,14 @@ app.use((err, req, res, next) => {
   res.status(500).json({ message: err.message || 'Internal server error' });
 });
 
+const { loadModel } = require('./src/embeddingService');
+
 const startServer = async () => {
   try {
     await connectDB();
     await sequelize.sync({ alter: nodeEnv === 'development' });
     console.log('Database synced successfully');
+    await loadModel();
     app.listen(port, () => {
       console.log(`Server running in ${nodeEnv} mode on port ${port}`);
       console.log(`Health check: http://localhost:${port}/`);
