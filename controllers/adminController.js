@@ -84,7 +84,7 @@ const getUsers = async (req, res) => {
 
 const createUser = async (req, res) => {
   try {
-    const { fullName, email, password, role, phoneNumber } = req.body;
+    const { fullName, email, password, role, phoneNumber, department } = req.body;
     if (!fullName || !email || !password || !role)
       return res.status(400).json({ message: 'All fields are required' });
 
@@ -93,7 +93,7 @@ const createUser = async (req, res) => {
       return res.status(409).json({ message: 'Email already registered' });
 
     const hashed = await bcrypt.hash(password, 10);
-    const user = await User.create({ fullName, email, password: hashed, role, phoneNumber: phoneNumber || null });
+    const user = await User.create({ fullName, email, password: hashed, role, phoneNumber: phoneNumber || null, department: department || null });
 
     const nameParts = fullName.split(' ');
     await Settings.create({
@@ -103,7 +103,32 @@ const createUser = async (req, res) => {
       email,
     });
 
-    res.status(201).json({ id: user.id, fullName: user.fullName, email: user.email, role: user.role, phoneNumber: user.phoneNumber });
+    res.status(201).json({ id: user.id, fullName: user.fullName, email: user.email, role: user.role, phoneNumber: user.phoneNumber, department: user.department });
+  } catch (err) {
+    res.status(500).json({ message: err.message });
+  }
+};
+
+const updateUser = async (req, res) => {
+  try {
+    const { fullName, email, role, phoneNumber, department } = req.body;
+    const user = await User.findByPk(req.params.id);
+    if (!user) return res.status(404).json({ message: 'User not found' });
+
+    if (email && email !== user.email) {
+      const existing = await User.findOne({ where: { email } });
+      if (existing) return res.status(409).json({ message: 'Email already in use' });
+    }
+
+    await user.update({
+      fullName: fullName ?? user.fullName,
+      email: email ?? user.email,
+      role: role ?? user.role,
+      phoneNumber: phoneNumber ?? user.phoneNumber,
+      department: department ?? user.department,
+    });
+
+    res.json({ id: user.id, fullName: user.fullName, email: user.email, role: user.role, phoneNumber: user.phoneNumber, department: user.department });
   } catch (err) {
     res.status(500).json({ message: err.message });
   }
@@ -316,7 +341,7 @@ const getStudentsByLecturer = async (req, res) => {
 
 module.exports = {
   getStats, getDocuments, getSimilarity, getUsers,
-  createUser, deleteUser, getDocumentsPerMonth,
+  createUser, updateUser, deleteUser, getDocumentsPerMonth,
   getPlagiarismStats, getUserActivity, getNotifications,
   assignStudent, unassignStudent, getAssignments, getStudentsByLecturer,
 };

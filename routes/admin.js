@@ -3,7 +3,7 @@ const router = express.Router();
 const { authenticate, authorize } = require('../middleware/auth');
 const {
   getStats, getDocuments, getSimilarity, getUsers,
-  createUser, deleteUser, getDocumentsPerMonth,
+  createUser, deleteUser, updateUser, getDocumentsPerMonth,
   getPlagiarismStats, getUserActivity, getNotifications,
   assignStudent, unassignStudent, getAssignments, getStudentsByLecturer,
 } = require('../controllers/adminController');
@@ -16,6 +16,7 @@ router.get('/documents', getDocuments);
 router.get('/similarity', getSimilarity);
 router.get('/users', getUsers);
 router.post('/users', createUser);
+router.put('/users/:id', updateUser);
 router.delete('/users/:id', deleteUser);
 router.get('/documents-per-month', getDocumentsPerMonth);
 router.get('/plagiarism-stats', getPlagiarismStats);
