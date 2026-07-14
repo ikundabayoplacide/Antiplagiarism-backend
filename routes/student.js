@@ -4,6 +4,7 @@ const path = require('path');
 const router = express.Router();
 const { authenticate } = require('../middleware/auth');
 const { getStats, getScans, getScanById, createScan, deleteScan } = require('../controllers/studentController');
+const { getNotifications, markAsRead } = require('../controllers/notificationController');
 
 const upload = multer({
   dest: 'uploads/',
@@ -19,6 +20,8 @@ const upload = multer({
 router.use(authenticate);
 
 router.get('/stats', getStats);
+router.get('/notifications', getNotifications);
+router.patch('/notifications/:id/read', markAsRead);
 router.get('/scans', getScans);
 router.get('/scans/:id', getScanById);
 router.post('/scans', upload.single('file'), createScan);

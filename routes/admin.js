@@ -7,6 +7,7 @@ const {
   getPlagiarismStats, getUserActivity, getNotifications,
   assignStudent, unassignStudent, getAssignments, getStudentsByLecturer,
 } = require('../controllers/adminController');
+const { markAsRead } = require('../controllers/notificationController');
 
 router.use(authenticate, authorize('admin'));
 
@@ -20,6 +21,7 @@ router.get('/documents-per-month', getDocumentsPerMonth);
 router.get('/plagiarism-stats', getPlagiarismStats);
 router.get('/user-activity', getUserActivity);
 router.get('/notifications', getNotifications);
+router.patch('/notifications/:id/read', markAsRead);
 router.post('/assign', assignStudent);
 router.delete('/unassign/:id', unassignStudent);
 router.get('/assignments', getAssignments);

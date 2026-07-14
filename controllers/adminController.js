@@ -1,7 +1,8 @@
 const bcrypt = require('bcryptjs');
 const { Op } = require('sequelize');
 const { sequelize } = require('../config/database');
-const { User, Scan, Settings, LecturerStudent } = require('../src/database/modals/index');
+const { User, Scan, Settings, LecturerStudent, Notification } = require('../src/database/modals/index');
+const { notify } = require('../src/notificationService');
 
 const getStats = async (req, res) => {
   try {
@@ -180,20 +181,11 @@ const getUserActivity = async (req, res) => {
 
 const getNotifications = async (req, res) => {
   try {
-    const scans = await Scan.findAll({
-      include: [{ model: User, as: 'user', attributes: ['fullName'] }],
+    const notifications = await Notification.findAll({
+      where: { userId: req.user.id },
       order: [['created_at', 'DESC']],
-      limit: 10,
     });
-
-    res.json(
-      scans.map((s) => ({
-        id: s.id,
-        title: s.plagiarismPercent >= 30 ? 'Plagiarism Alert' : 'New Submission',
-        message: `${s.user.fullName} submitted "${s.fileName}" — ${s.plagiarismPercent}% similarity`,
-        time: s.createdAt,
-      }))
-    );
+    res.json(notifications);
   } catch (err) {
     res.status(500).json({ message: err.message });
   }
@@ -218,6 +210,30 @@ const assignStudent = async (req, res) => {
 
     if (!created) return res.status(409).json({ message: 'Student already assigned to this lecturer' });
 
+    // Notify lecturer, student, and all admins
+    const admins = await User.findAll({ where: { role: 'admin' }, attributes: ['id'] });
+    const adminIds = admins.map((a) => a.id);
+    await notify(
+      [lecturerId],
+      'assignment',
+      'New Student Assigned',
+      `Student "${student.fullName}" has been assigned to you.`
+    );
+    await notify(
+      [studentId],
+      'assignment',
+      'Lecturer Assigned',
+      `You have been assigned to lecturer "${lecturer.fullName}".`
+    );
+    if (adminIds.length) {
+      await notify(
+        adminIds,
+        'assignment',
+        'Student Assignment',
+        `Student "${student.fullName}" was assigned to lecturer "${lecturer.fullName}".`
+      );
+    }
+
     res.status(201).json({ id: assignment.id, lecturerId, studentId, createdAt: assignment.createdAt });
   } catch (err) {
     res.status(500).json({ message: err.message });
@@ -226,8 +242,44 @@ const assignStudent = async (req, res) => {
 
 const unassignStudent = async (req, res) => {
   try {
-    const deleted = await LecturerStudent.destroy({ where: { id: req.params.id } });
-    if (!deleted) return res.status(404).json({ message: 'Assignment not found' });
+    const assignment = await LecturerStudent.findOne({
+      where: { id: req.params.id },
+      include: [
+        { model: User, as: 'lecturer', attributes: ['id', 'fullName'] },
+        { model: User, as: 'student', attributes: ['id', 'fullName'] },
+      ],
+    });
+    if (!assignment) return res.status(404).json({ message: 'Assignment not found' });
+
+    const { lecturerId, studentId } = assignment;
+    const lecturerName = assignment.lecturer.fullName;
+    const studentName = assignment.student.fullName;
+
+    await assignment.destroy();
+
+    const admins = await User.findAll({ where: { role: 'admin' }, attributes: ['id'] });
+    const adminIds = admins.map((a) => a.id);
+    await notify(
+      [lecturerId],
+      'assignment',
+      'Student Unassigned',
+      `Student "${studentName}" has been removed from your supervision.`
+    );
+    await notify(
+      [studentId],
+      'assignment',
+      'Lecturer Unassigned',
+      `You have been unassigned from lecturer "${lecturerName}".`
+    );
+    if (adminIds.length) {
+      await notify(
+        adminIds,
+        'assignment',
+        'Student Unassignment',
+        `Student "${studentName}" was removed from lecturer "${lecturerName}".`
+      );
+    }
+
     res.json({ message: 'Student unassigned successfully' });
   } catch (err) {
     res.status(500).json({ message: err.message });

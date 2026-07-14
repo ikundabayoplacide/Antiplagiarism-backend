@@ -3,6 +3,7 @@ const Scan = require('./ScanModel');
 const Settings = require('./SettingsModel');
 const Document = require('./DocumentModel');
 const LecturerStudent = require('./LecturerStudentModel');
+const Notification = require('./NotificationModel');
 
 // Associations
 User.hasMany(Scan, { foreignKey: 'userId', as: 'scans', onDelete: 'CASCADE' });
@@ -19,4 +20,7 @@ User.hasMany(LecturerStudent, { foreignKey: 'studentId', as: 'assignedLecturers'
 LecturerStudent.belongsTo(User, { foreignKey: 'lecturerId', as: 'lecturer' });
 LecturerStudent.belongsTo(User, { foreignKey: 'studentId', as: 'student' });
 
-module.exports = { User, Scan, Settings, Document, LecturerStudent };
+User.hasMany(Notification, { foreignKey: 'userId', as: 'notifications', onDelete: 'CASCADE' });
+Notification.belongsTo(User, { foreignKey: 'userId', as: 'user' });
+
+module.exports = { User, Scan, Settings, Document, LecturerStudent, Notification };
