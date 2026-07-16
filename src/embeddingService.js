@@ -1,14 +1,23 @@
 const { pipeline } = require('@xenova/transformers');
 
 let embedder = null;
+let loadingPromise = null;
 
 const loadModel = async () => {
-  if (!embedder) {
+  if (embedder) return embedder;
+  if (loadingPromise) return loadingPromise;
+
+  loadingPromise = (async () => {
     console.log('Loading embedding model (first time may take a moment)...');
     embedder = await pipeline('feature-extraction', 'Xenova/all-MiniLM-L6-v2');
     console.log('Embedding model loaded successfully');
-  }
-  return embedder;
+    return embedder;
+  })().catch((err) => {
+    loadingPromise = null;
+    throw err;
+  });
+
+  return loadingPromise;
 };
 
 const generateEmbedding = async (text) => {
@@ -29,7 +38,6 @@ const generateEmbeddings = async (paragraphs) => {
   return embeddings;
 };
 
-// Average multiple paragraph embeddings into one document-level embedding
 const averageEmbeddings = (embeddings) => {
   if (embeddings.length === 0) return null;
   const size = embeddings[0].length;
